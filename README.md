@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/thumbnail.jpg" alt="Elon — autonomous brand marketing agent" width="100%" />
+</p>
+
 # Elon
 
 **Autonomous brand marketing agent — ConHacks 2026**
