@@ -104,7 +104,7 @@ export function AnalyticsInsight() {
               Statistics and analytics
             </span>
             <h2 className="mt-4 max-w-[14ch] text-[clamp(2.1rem,4.8vw,4.4rem)] font-medium leading-[0.98] tracking-tight">
-              Every result becomes a clearer strategy.
+              Analyzes data for reporting and better results.
             </h2>
             <p className="mt-6 max-w-[62ch] text-[15px] leading-relaxed text-soft md:text-base">
               Elon analyzes the statistics behind each post so the team can understand what is

@@ -12,21 +12,15 @@ export function Hero() {
       <Blob className="left-1/3 top-[28rem] w-[26rem] h-[26rem] bg-mint/40" />
 
       <div className="relative container-x text-center">
-        <motion.span
-          initial={{ opacity: 0, y: 6, rotate: -3 }}
-          animate={{ opacity: 1, y: 0, rotate: -3 }}
-          transition={{ type: "spring", stiffness: 220, damping: 18, delay: 0.1 }}
-          className="sticker bg-white inline-block"
-        >
-          {copy.hero.eyebrow}
-        </motion.span>
+        <BigElon />
 
         <motion.h1
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.18 }}
           className="mt-7 mx-auto max-w-[18ch] text-[clamp(2.6rem,6.4vw,5rem)]
-                     leading-[1.02] tracking-tightest font-medium"
+                     leading-[1.02] tracking-tight font-semibold"
+          style={{ fontFamily: '"Bricolage Grotesque", Inter, system-ui, sans-serif' }}
         >
           {copy.hero.title_pre}{" "}
           <span className="display italic font-normal text-coral">{copy.hero.title_em}</span>{" "}
@@ -48,7 +42,7 @@ export function Hero() {
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.34 }}
           className="mt-10 flex flex-wrap items-center justify-center gap-3"
         >
-          <a href="#how" className="btn btn-primary">Show me how →</a>
+          <a href="/architecture.html" target="_blank" rel="noreferrer" className="btn btn-primary">View architecture →</a>
           <a href="https://conhacks-2026.devpost.com/" target="_blank" rel="noreferrer"
              className="btn btn-ghost">ConHacks 2026 ↗</a>
         </motion.div>
@@ -63,6 +57,59 @@ export function Hero() {
         </motion.div>
       </div>
     </section>
+  );
+}
+
+function BigElon() {
+  const letters = ["E", "l", "o", "n"];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      className="relative mx-auto inline-flex select-none items-center gap-3"
+    >
+      <span className="relative inline-flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-coral/60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-coral" />
+      </span>
+
+      <span
+        aria-label="Elon"
+        className="flex items-baseline text-[clamp(2.6rem,5.4vw,4rem)] font-bold leading-none tracking-tight text-ink"
+      >
+        {letters.map((ch, i) => (
+          <motion.span
+            key={i}
+            initial={{ y: 14, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{
+              duration: 0.55,
+              ease: [0.22, 1, 0.36, 1],
+              delay: 0.08 + i * 0.05,
+            }}
+            className="inline-block"
+          >
+            {ch}
+          </motion.span>
+        ))}
+      </span>
+
+      <motion.span
+        initial={{ opacity: 0, scale: 0.5, rotate: -25 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 240, damping: 14, delay: 0.35 }}
+        className="inline-block text-4xl md:text-5xl"
+      >
+        <motion.span
+          className="inline-block origin-[70%_80%]"
+          animate={{ rotate: [0, 16, -8, 16, 0] }}
+          transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 2.6, ease: "easeInOut" }}
+        >
+          👽
+        </motion.span>
+      </motion.span>
+    </motion.div>
   );
 }
 
