@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Elon — System Flow</title>
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-2: #0f1219;
+    --ink: #e6e9ef;
+    --muted: #8a93a6;
+    --line: #232938;
+    --accent: #ff6b35;
+    --accent-2: #ffb084;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --info: #60a5fa;
+    --purple: #a78bfa;
+    --teal: #2dd4bf;
+    --pink: #f472b6;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter", "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+  }
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 20;
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, rgba(10,12,17,0.96), rgba(10,12,17,0.6));
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+  }
+  .logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: radial-gradient(circle at 30% 30%, var(--accent-2), var(--accent) 60%, #7a2410);
+    box-shadow: 0 0 18px rgba(255,107,53,0.5);
+  }
+  .title { font-weight: 700; letter-spacing: 0.2px; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .legend {
+    margin-left: auto;
+    display: flex; gap: 14px; font-size: 12px; color: var(--muted);
+    align-items: center; flex-wrap: wrap;
+  }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+
+  .controls {
+    position: fixed; bottom: 16px; left: 16px; z-index: 20;
+    display: flex; gap: 6px;
+    background: rgba(15,18,25,0.85);
+    border: 1px solid var(--line);
+    border-radius: 10px; padding: 6px;
+    backdrop-filter: blur(8px);
+  }
+  .controls button {
+    background: #161a24; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px;
+    font-family: inherit;
+  }
+  .controls button:hover { border-color: var(--accent); color: var(--accent-2); }
+  .controls button.active { background: rgba(255,107,53,0.15); border-color: var(--accent); color: var(--accent-2); }
+
+  .hint { position: fixed; bottom: 16px; right: 16px; color: var(--muted); font-size: 11px; z-index: 20;
+    background: rgba(15,18,25,0.7); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); }
+
+  #stats {
+    position: fixed; top: 60px; right: 16px; z-index: 20;
+    background: rgba(15,18,25,0.85);
+    border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px;
+    font: 11px ui-monospace, "JetBrains Mono", Menlo, monospace;
+    color: var(--muted);
+  }
+  #stats b { color: var(--accent-2); }
+
+  canvas {
+    position: absolute; inset: 0;
+    cursor: grab;
+    display: block;
+  }
+  canvas.dragging { cursor: grabbing; }
+  canvas.over-node { cursor: pointer; }
+
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: linear-gradient(180deg, #1a1f2b, #11141c);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    max-width: 280px;
+    font-size: 12px;
+    color: var(--ink);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    z-index: 30;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  #tooltip.show { opacity: 1; }
+  #tooltip .tt-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  #tooltip .tt-kind { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  #tooltip .tt-desc { color: #b8c0d0; line-height: 1.5; margin: 6px 0; }
+  #tooltip .tt-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  #tooltip .pill { font-size: 10px; padding: 2px 6px; border-radius: 999px; background: #0e111a; border: 1px solid var(--line); color: var(--muted); }
+  #tooltip .pill.ok { color: var(--ok); border-color: rgba(74,222,128,0.35); }
+  #tooltip .pill.warn { color: var(--warn); border-color: rgba(251,191,36,0.35); }
+  #tooltip .pill.bad { color: var(--bad); border-color: rgba(248,113,113,0.35); }
+  #tooltip .pill.info { color: var(--info); border-color: rgba(96,165,250,0.35); }
+  #tooltip .pill.purple { color: var(--purple); border-color: rgba(167,139,250,0.35); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"></div>
+  <div>
+    <div class="title">Elon · Autonomous Brand Marketing Agent</div>
+    <div class="sub">System flow — multi-tenant · Claude-powered · official APIs only</div>
+  </div>
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--accent)"></i>Trigger</span>
+    <span><i class="swatch" style="background:var(--info)"></i>API</span>
+    <span><i class="swatch" style="background:var(--purple)"></i>Worker</span>
+    <span><i class="swatch" style="background:var(--teal)"></i>Store</span>
+    <span><i class="swatch" style="background:var(--pink)"></i>LLM</span>
+    <span><i class="swatch" style="background:var(--warn)"></i>External</span>
+    <span><i class="swatch" style="background:var(--ok)"></i>Human</span>
+  </div>
+</header>
+
+<canvas id="cv"></canvas>
+<div id="tooltip"></div>
+<div id="stats">— fps · — nodes · — edges</div>
+
+<div class="controls">
+  <button id="zoom-in">＋</button>
+  <button id="zoom-out">－</button>
+  <button id="zoom-fit">Fit</button>
+  <button id="zoom-reset">100%</button>
+  <button id="toggle-flow" class="active">Flow</button>
+  <button id="toggle-glow" class="active">Glow</button>
+  <button id="toggle-grid" class="active">Grid</button>
+</div>
+<div class="hint">drag canvas · scroll to zoom · drag nodes · hover to inspect</div>
+
+<script>
+/* ===========================================================
+   Data
+   =========================================================== */
+
+const CAT = {
+  trigger:  { color: "#ff6b35", fill: "rgba(255,107,53,0.10)" },
+  api:      { color: "#60a5fa", fill: "rgba(96,165,250,0.10)" },
+  worker:   { color: "#a78bfa", fill: "rgba(167,139,250,0.10)" },
+  store:    { color: "#2dd4bf", fill: "rgba(45,212,191,0.10)" },
+  llm:      { color: "#f472b6", fill: "rgba(244,114,182,0.10)" },
+  external: { color: "#fbbf24", fill: "rgba(251,191,36,0.10)" },
+  human:    { color: "#4ade80", fill: "rgba(74,222,128,0.10)" },
+};
+
+const GROUPS = [
+  { id: "g-onboard",  label: "Onboarding & Identity",          x:  40, y:  90, w: 540, h: 360 },
+  { id: "g-api",      label: "API · FastAPI :8000",             x: 620, y:  90, w: 540, h: 360 },
+  { id: "g-store",    label: "Stores",                          x:1200, y:  90, w: 640, h: 360 },
+  { id: "g-llm",      label: "LLM Layer · Claude",              x:1880, y:  90, w: 540, h: 360 },
+  { id: "g-ext-id",   label: "External Identity / OAuth",       x:2460, y:  90, w: 460, h: 360 },
+
+  { id: "g-beat",     label: "Beat · Scheduler",                x:  40, y: 500, w: 380, h: 320 },
+  { id: "g-worker",   label: "Celery Workers · 6 queues",       x: 460, y: 500, w: 980, h: 700 },
+  { id: "g-media",    label: "Media Generation",                x:1480, y: 500, w: 460, h: 320 },
+  { id: "g-publish",  label: "Publishers (Official APIs)",      x:1980, y: 500, w: 540, h: 700 },
+  { id: "g-platform", label: "Platforms",                       x:2560, y: 500, w: 460, h: 700 },
+
+  { id: "g-human",    label: "Operator Channels",               x:  40, y: 870, w: 380, h: 330 },
+  { id: "g-analytics",label: "Analytics / Memory / Strategy",    x:1480, y: 870, w: 460, h: 330 },
+
+  { id: "g-safety",   label: "Safety · Spend · Approval",        x: 460, y:1240, w:1480, h: 230 },
+];
+
+const NODES = [
+  // Onboarding
+  { id: "tenant",    cat:"trigger", icon:"🏢", name:"Tenant onboard", desc:"POST /tenants → JWT + Telegram link token", x: 70,  y: 140, kind:"start", pills:[["multi-tenant","info"]] },
+  { id: "operator",  cat:"human",   icon:"🧑‍💼", name:"Operator",       desc:"Approves every post · binds chat · OAuths platforms", x: 70, y: 270, kind:"actor", pills:[["human-in-loop","ok"]] },
+  { id: "jwt",       cat:"api",     icon:"🔑", name:"Auth · deps.py", desc:"Derives tenant_id from JWT — never trust input", x: 340, y: 140, kind:"middleware", pills:[["tenant_id","warn"]] },
+  { id: "secretbox", cat:"store",   icon:"🔒", name:"SecretBox",      desc:"libsodium · 32B SECRET_BOX_KEY · encrypts OAuth tokens at rest", x: 340, y: 270, kind:"crypto", pills:[["AEAD","purple"]] },
+
+  // API
+  { id: "rest",      cat:"api", icon:"🌐", name:"REST routes",        desc:"/tenants /drafts /oauth /media /metrics", x: 650, y: 140, kind:"http", pills:[["FastAPI","info"]] },
+  { id: "wh-tg",     cat:"api", icon:"💬", name:"Webhook · Telegram", desc:"/link · approve · reject · ask", x: 650, y: 270, kind:"webhook" },
+  { id: "wh-meta",   cat:"api", icon:"📡", name:"Webhook · Meta",     desc:"page_changes · mentions · comments", x: 920, y: 140, kind:"webhook" },
+  { id: "media-proxy",cat:"api",icon:"🎞️", name:"GET /media/{key}",   desc:"Streams MinIO/S3 objects to platform publishers", x: 920, y: 270, kind:"proxy" },
+
+  // Stores
+  { id: "pg",      cat:"store", icon:"🐘", name:"Postgres + pgvector", desc:"All domain tables · keyed by tenant_id · embeddings", x:1230, y: 140, kind:"db" },
+  { id: "redis",   cat:"store", icon:"🟥", name:"Redis",                desc:"Celery broker · result backend · rate-limit buckets", x:1230, y: 270, kind:"cache" },
+  { id: "minio",   cat:"store", icon:"🪣", name:"MinIO / S3",           desc:"Renders · NotebookLM audio · scraped previews", x:1500, y: 140, kind:"object" },
+  { id: "alembic", cat:"store", icon:"📜", name:"Alembic",              desc:"Migrations · run on bootstrap & deploy", x:1500, y: 270, kind:"schema" },
+  { id: "vector",  cat:"store", icon:"🧬", name:"Brand memory",          desc:"pgvector embeddings · cached as static block in prompts", x:1750, y: 200, kind:"memory" },
+
+  // LLM
+  { id: "claude-sonnet", cat:"llm", icon:"✨", name:"Claude Sonnet", desc:"Default model · drafting · critique · classify", x:1910, y: 140, kind:"llm", pills:[["cache:on","ok"]] },
+  { id: "claude-opus",   cat:"llm", icon:"🧠", name:"Claude Opus",   desc:"Planner & crisis paths only", x:1910, y: 270, kind:"llm", pills:[["expensive","warn"]] },
+  { id: "llm-core",      cat:"llm", icon:"📦", name:"elon.core.llm", desc:"Cacheable system+memory blocks · spend meter hooks", x:2180, y: 200, kind:"adapter", pills:[["prompt-cache","purple"]] },
+
+  // External identity
+  { id: "oauth-meta",  cat:"external", icon:"🔵", name:"Meta OAuth",        desc:"FB Login · pages_manage_posts · ig_content_publish", x:2490, y: 140, kind:"oauth" },
+  { id: "oauth-tt",    cat:"external", icon:"🎵", name:"TikTok OAuth",      desc:"video.publish + per-post review gate", x:2490, y: 270, kind:"oauth", pills:[["per-post review","bad"]] },
+  { id: "tg-bot",      cat:"external", icon:"🤖", name:"Telegram Bot API",  desc:"Bot token · webhook · sendMessage", x:2730, y: 200, kind:"api" },
+
+  // Beat
+  { id: "beat",        cat:"trigger", icon:"⏰", name:"Celery beat",       desc:"Schedule lives on celery_app.conf.beat_schedule", x: 70,  y: 560, kind:"scheduler", pills:[["UTC","info"]] },
+  { id: "cron-plan",   cat:"trigger", icon:"📅", name:"plan_daily",        desc:"08:00 UTC · drafts tomorrow's posts", x: 70,  y: 670, kind:"cron" },
+  { id: "cron-pull",   cat:"trigger", icon:"📈", name:"pull_metrics",      desc:"hourly · IG/FB/TT insights", x: 240, y: 670, kind:"cron" },
+  { id: "cron-digest", cat:"trigger", icon:"🌙", name:"nightly_digest",    desc:"22:00 UTC · summary to operator", x: 240, y: 560, kind:"cron" },
+  { id: "cron-exp",    cat:"trigger", icon:"🧪", name:"experiments_tick",  desc:"Multi-armed bandit step", x: 70, y: 770, kind:"cron" },
+  { id: "cron-comp",   cat:"trigger", icon:"🥷", name:"competitor_scan",   desc:"Public signals · official APIs only", x: 240, y: 770, kind:"cron" },
+
+  // Workers (6 queues)
+  { id: "q-ingest",    cat:"worker", icon:"📥", name:"queue:ingest",     desc:"Webhook payloads · signal normalization", x: 490,  y: 560, kind:"queue" },
+  { id: "q-content",   cat:"worker", icon:"✍️", name:"queue:content",    desc:"plan_daily · draft · critique · revise", x: 490,  y: 680, kind:"queue" },
+  { id: "q-publish",   cat:"worker", icon:"🚀", name:"queue:publish",    desc:"Approved → platform post · idempotent", x: 490,  y: 800, kind:"queue" },
+  { id: "q-analytics", cat:"worker", icon:"📊", name:"queue:analytics",  desc:"Pull metrics · attribute · roll up", x: 490,  y: 920, kind:"queue" },
+  { id: "q-experiments",cat:"worker",icon:"🎲", name:"queue:experiments",desc:"Bandit arms · variant scoring", x: 490, y:1040, kind:"queue" },
+  { id: "q-notify",    cat:"worker", icon:"🔔", name:"queue:notify",     desc:"Telegram pings · digests · alerts", x: 490, y:1140, kind:"queue" },
+
+  // Tasks
+  { id: "planner",     cat:"worker", icon:"🗺️", name:"strategy.planner",   desc:"Opus · weekly plan + daily slot picks", x: 760, y: 560, kind:"task" },
+  { id: "drafter",     cat:"worker", icon:"📝", name:"content.drafter",    desc:"Sonnet · caption + hook + CTA · brand voice", x: 760, y: 680, kind:"task" },
+  { id: "critic",      cat:"worker", icon:"🔍", name:"content.critic",     desc:"Sonnet · policy + brand-fit · returns score", x: 760, y: 800, kind:"task" },
+  { id: "guardrail",   cat:"worker", icon:"🛡️", name:"safety.guardrail",   desc:"Banned terms · IP risks · platform TOS", x: 760, y: 920, kind:"task" },
+  { id: "publisher",   cat:"worker", icon:"📮", name:"publish.dispatch",   desc:"Routes draft → IG / FB / TT publisher", x: 760, y:1040, kind:"task" },
+  { id: "metrics",     cat:"worker", icon:"📐", name:"analytics.collect",  desc:"insights/{ig,fb,tt} → roll-up tables", x: 760, y:1140, kind:"task" },
+
+  { id: "memory",      cat:"worker", icon:"🧷", name:"memory.update",      desc:"Brand memory + post outcomes → pgvector", x:1040, y: 560, kind:"task" },
+  { id: "exp-arm",     cat:"worker", icon:"🎰", name:"experiments.step",   desc:"Thompson sampling on hooks/CTAs", x:1040, y: 680, kind:"task" },
+  { id: "competitor",  cat:"worker", icon:"🛰️", name:"competitor.scan",    desc:"Public posts only · no scraping", x:1040, y: 800, kind:"task" },
+  { id: "spend",       cat:"worker", icon:"💸", name:"core.spend",         desc:"$50/mo soft cap per tenant · token + media accounting", x:1040, y: 920, kind:"task", pills:[["$50/mo","warn"]] },
+  { id: "rate",        cat:"worker", icon:"🚦", name:"rate-limit",         desc:"Per-platform sliding window in Redis", x:1040, y:1040, kind:"task" },
+  { id: "retry",       cat:"worker", icon:"♻️", name:"retry · DLQ",        desc:"Exponential backoff · poison queue", x:1040, y:1140, kind:"task" },
+
+  { id: "approval-gate",cat:"worker",icon:"🛂", name:"approval-gate",      desc:"Blocks publish until operator OK · TikTok extra gate", x:1230, y: 560, kind:"gate", pills:[["mandatory","bad"]] },
+  { id: "scheduler-task",cat:"worker",icon:"⌛", name:"schedule-slot",     desc:"IG 1/d · TT 1/d · FB 3/wk · cadence enforcement", x:1230, y: 680, kind:"task" },
+  { id: "render-job",  cat:"worker", icon:"🎨", name:"render-job",         desc:"Higgsfield → image/video · NotebookLM → audio", x:1230, y: 800, kind:"task" },
+  { id: "thumb",       cat:"worker", icon:"🖼️", name:"thumbnailer",        desc:"FFmpeg · cover frame · alt-text gen", x:1230, y: 920, kind:"task" },
+  { id: "captioner",   cat:"worker", icon:"💬", name:"captioner",          desc:"Hashtag + mention placement", x:1230, y:1040, kind:"task" },
+  { id: "digest",      cat:"worker", icon:"📰", name:"nightly_digest",     desc:"Sonnet · yesterday recap + tomorrow plan", x:1230, y:1140, kind:"task" },
+
+  // Media
+  { id: "higgs",       cat:"external", icon:"🌌", name:"Higgsfield",         desc:"Forced image/video gen · feature flag fallback", x:1510, y: 560, kind:"api" },
+  { id: "notebook",    cat:"external", icon:"🎙️", name:"NotebookLM",         desc:"Forced audio synthesis", x:1510, y: 680, kind:"api" },
+  { id: "fallback-gen",cat:"external", icon:"🪂", name:"Fallback adapter",   desc:"Behind flag · alt providers", x:1510, y: 800, kind:"api" },
+
+  // Publishers
+  { id: "pub-ig",  cat:"worker", icon:"📷", name:"publisher.ig",     desc:"IG Graph · 1/day · container → publish", x:2010, y: 560, kind:"adapter" },
+  { id: "pub-fb",  cat:"worker", icon:"📘", name:"publisher.fb",     desc:"FB Graph · 3/week · page token", x:2010, y: 680, kind:"adapter" },
+  { id: "pub-tt",  cat:"worker", icon:"🎬", name:"publisher.tiktok", desc:"Content Posting · 1/day · per-post review", x:2010, y: 800, kind:"adapter", pills:[["per-post review","bad"]] },
+  { id: "idemp",   cat:"worker", icon:"🆔", name:"idempotency",      desc:"draft_id → platform_post_id mapping", x:2010, y: 920, kind:"task" },
+  { id: "backoff", cat:"worker", icon:"🌀", name:"platform-backoff", desc:"Per-platform error budgets", x:2010, y:1040, kind:"task" },
+
+  // Platforms
+  { id: "ig", cat:"external", icon:"📸", name:"Instagram Graph API",   desc:"ig_content_publish · insights", x:2590, y: 560, kind:"platform" },
+  { id: "fb", cat:"external", icon:"👥", name:"Facebook Graph API",    desc:"pages_manage_posts · insights", x:2590, y: 680, kind:"platform" },
+  { id: "tt", cat:"external", icon:"🎶", name:"TikTok Content Posting",desc:"Sandbox + production", x:2590, y: 800, kind:"platform" },
+  { id: "ig-feed", cat:"external", icon:"📈", name:"IG insights",       desc:"reach · plays · saves", x:2590, y: 920, kind:"data" },
+  { id: "fb-feed", cat:"external", icon:"📈", name:"FB insights",       desc:"reach · clicks · reactions", x:2590, y:1040, kind:"data" },
+  { id: "tt-feed", cat:"external", icon:"📈", name:"TT analytics",      desc:"views · finish-rate", x:2590, y:1140, kind:"data" },
+
+  // Operator channels
+  { id: "tg-chat",   cat:"human", icon:"💌", name:"Telegram chat",     desc:"Approve / reject / ask · binds via /link", x: 70, y: 920, kind:"channel" },
+  { id: "web",       cat:"human", icon:"🖥️", name:"Web admin",          desc:"Next.js :3000 · /login JWT · /drafts · /metrics", x: 70, y:1040, kind:"channel" },
+  { id: "digest-out",cat:"human", icon:"📩", name:"Nightly digest",    desc:"22:00 UTC · TG + email", x:240, y: 920, kind:"channel" },
+  { id: "alerts",    cat:"human", icon:"🚨", name:"Alerts",            desc:"Spend cap · platform errors · auth expiry", x:240, y:1040, kind:"channel" },
+
+  // Analytics / memory / strategy
+  { id: "analytics-roll", cat:"store", icon:"🧮", name:"metrics_rollup", desc:"per-tenant per-platform per-day", x:1510, y: 920, kind:"db" },
+  { id: "attribution",    cat:"store", icon:"🧭", name:"attribution",    desc:"variant → outcome links", x:1510, y:1040, kind:"db" },
+  { id: "strategy",       cat:"llm",   icon:"🎯", name:"strategy.update",desc:"Opus · weekly · adjusts plan from outcomes", x:1750, y: 920, kind:"llm" },
+  { id: "memwriter",      cat:"llm",   icon:"📚", name:"memory.compose", desc:"Sonnet · brand voice + lore + do/don't", x:1750, y:1040, kind:"llm" },
+
+  // Safety bar
+  { id: "policy-tos",   cat:"worker", icon:"⚖️", name:"platform TOS check", desc:"Blocks unofficial paths · IG/TT review", x: 490, y:1290, kind:"check" },
+  { id: "approval-log", cat:"store",  icon:"🧾", name:"approval log",       desc:"Append-only · per-post operator decision", x: 770, y:1290, kind:"db" },
+  { id: "spend-cap",    cat:"worker", icon:"🧯", name:"spend cap enforcer", desc:"Halts content/publish at cap · alerts operator", x:1050, y:1290, kind:"check" },
+  { id: "audit",        cat:"store",  icon:"🪪", name:"audit trail",        desc:"Every Claude call · every platform call", x:1330, y:1290, kind:"db" },
+  { id: "rotation",     cat:"worker", icon:"🔁", name:"token rotation",     desc:"Page tokens refreshed before expiry", x:1610, y:1290, kind:"check" },
+];
+
+/* edges: [from, to, kind?, label?] — kind: flow|crit|data|event */
+const EDGES = [
+  ["operator","tenant","flow","onboard"],
+  ["tenant","jwt","flow","JWT"],
+  ["jwt","rest","flow"],
+  ["jwt","wh-tg"],
+  ["jwt","wh-meta"],
+  ["operator","tg-chat","flow","/link"],
+  ["tg-chat","wh-tg","flow"],
+
+  ["operator","oauth-meta","crit","authorize"],
+  ["operator","oauth-tt","crit","authorize"],
+  ["oauth-meta","secretbox","data","enc token"],
+  ["oauth-tt","secretbox","data","enc token"],
+  ["secretbox","pg","data"],
+  ["rest","oauth-meta","event","/oauth/start"],
+  ["rest","oauth-tt","event","/oauth/start"],
+
+  ["rest","pg","data"],
+  ["rest","redis","data"],
+  ["rest","minio","data"],
+  ["alembic","pg","data","migrate"],
+  ["wh-meta","q-ingest","event"],
+  ["wh-tg","q-ingest","event"],
+
+  ["beat","cron-plan","event"],
+  ["beat","cron-pull","event"],
+  ["beat","cron-digest","event"],
+  ["beat","cron-exp","event"],
+  ["beat","cron-comp","event"],
+  ["cron-plan","q-content","flow"],
+  ["cron-pull","q-analytics","flow"],
+  ["cron-digest","q-notify","flow"],
+  ["cron-exp","q-experiments","flow"],
+  ["cron-comp","q-ingest","flow"],
+
+  ["q-content","planner","flow"],
+  ["planner","claude-opus","data","plan prompt"],
+  ["claude-opus","llm-core","data"],
+  ["llm-core","claude-sonnet","data"],
+  ["llm-core","vector","data","memory"],
+  ["planner","drafter","flow"],
+  ["drafter","claude-sonnet","data"],
+  ["drafter","critic","flow"],
+  ["critic","claude-sonnet","data"],
+  ["critic","guardrail","flow"],
+  ["guardrail","scheduler-task","flow"],
+  ["scheduler-task","render-job","flow"],
+  ["render-job","higgs","data"],
+  ["render-job","notebook","data"],
+  ["render-job","fallback-gen","data"],
+  ["render-job","thumb","flow"],
+  ["thumb","captioner","flow"],
+  ["captioner","approval-gate","crit","await OK"],
+
+  ["approval-gate","tg-chat","event","ask"],
+  ["approval-gate","web","event"],
+  ["operator","approval-gate","crit","approve"],
+  ["approval-gate","approval-log","data"],
+  ["approval-gate","q-publish","crit","go"],
+
+  ["q-publish","publisher","flow"],
+  ["publisher","pub-ig","flow"],
+  ["publisher","pub-fb","flow"],
+  ["publisher","pub-tt","flow"],
+  ["pub-ig","media-proxy","data"],
+  ["pub-fb","media-proxy","data"],
+  ["pub-tt","media-proxy","data"],
+  ["media-proxy","minio","data"],
+  ["pub-ig","ig","crit"],
+  ["pub-fb","fb","crit"],
+  ["pub-tt","tt","crit","per-post review"],
+  ["pub-ig","idemp","data"],
+  ["pub-fb","idemp","data"],
+  ["pub-tt","idemp","data"],
+  ["pub-ig","backoff","event"],
+  ["pub-fb","backoff","event"],
+  ["pub-tt","backoff","event"],
+
+  ["q-analytics","metrics","flow"],
+  ["metrics","ig-feed","data"],
+  ["metrics","fb-feed","data"],
+  ["metrics","tt-feed","data"],
+  ["ig-feed","analytics-roll","data"],
+  ["fb-feed","analytics-roll","data"],
+  ["tt-feed","analytics-roll","data"],
+  ["analytics-roll","attribution","data"],
+  ["attribution","strategy","data"],
+  ["strategy","claude-opus","data"],
+  ["strategy","memory","flow"],
+  ["memory","memwriter","flow"],
+  ["memwriter","claude-sonnet","data"],
+  ["memwriter","vector","data"],
+
+  ["q-experiments","exp-arm","flow"],
+  ["exp-arm","attribution","data"],
+  ["exp-arm","planner","event","arm scores"],
+
+  ["competitor","ig","data","public"],
+  ["competitor","tt","data","public"],
+  ["competitor","memory","flow"],
+
+  ["q-notify","digest","flow"],
+  ["digest","claude-sonnet","data"],
+  ["digest","tg-bot","data"],
+  ["digest","digest-out","flow"],
+  ["alerts","tg-bot","data"],
+  ["spend","alerts","event","cap warn"],
+  ["backoff","alerts","event"],
+  ["rotation","alerts","event"],
+
+  ["tg-bot","tg-chat","data"],
+
+  ["claude-sonnet","spend","event","tokens"],
+  ["claude-opus","spend","event","tokens"],
+  ["render-job","spend","event","media$"],
+  ["spend","spend-cap","event"],
+  ["spend-cap","q-content","crit","halt"],
+  ["spend-cap","q-publish","crit","halt"],
+  ["publisher","policy-tos","data"],
+  ["policy-tos","approval-gate","event"],
+  ["pub-ig","audit","data"],
+  ["pub-fb","audit","data"],
+  ["pub-tt","audit","data"],
+  ["claude-sonnet","audit","data"],
+  ["claude-opus","audit","data"],
+  ["secretbox","rotation","data"],
+  ["rotation","oauth-meta","event","refresh"],
+  ["rotation","oauth-tt","event","refresh"],
+
+  ["web","rest","flow","drafts"],
+  ["rest","analytics-roll","data"],
+  ["rate","redis","data"],
+  ["retry","redis","data"],
+];
+
+/* ===========================================================
+   Layout & geometry helpers
+   =========================================================== */
+
+const NODE_W = 220, NODE_H = 96, NODE_R = 12;
+
+const nodeMap = new Map();
+NODES.forEach(n => {
+  n.w = NODE_W; n.h = NODE_H;
+  nodeMap.set(n.id, n);
+});
+
+// Build adjacency & wire records
+const wires = []; // {a,b,kind,label, ax,ay,bx,by, c1x,c1y,c2x,c2y}
+const adjacency = new Map();
+
+function addAdj(a,b) {
+  if (!adjacency.has(a)) adjacency.set(a, new Set());
+  adjacency.get(a).add(b);
+}
+
+EDGES.forEach(([a,b,kind,label]) => {
+  if (!nodeMap.has(a) || !nodeMap.has(b)) return;
+  wires.push({ a, b, kind: kind || "default", label: label || null });
+  addAdj(a,b); addAdj(b,a);
+});
+
+function recomputeWire(w) {
+  const A = nodeMap.get(w.a), B = nodeMap.get(w.b);
+  const acx = A.x + A.w/2, acy = A.y + A.h/2;
+  const bcx = B.x + B.w/2, bcy = B.y + B.h/2;
+  const dx = bcx - acx, dy = bcy - acy;
+  const horiz = Math.abs(dx) > Math.abs(dy);
+  let ax, ay, bx, by;
+  if (horiz) {
+    ax = A.x + (dx>0 ? A.w : 0); ay = A.y + A.h/2;
+    bx = B.x + (dx>0 ? 0 : B.w); by = B.y + B.h/2;
+  } else {
+    ax = A.x + A.w/2; ay = A.y + (dy>0 ? A.h : 0);
+    bx = B.x + B.w/2; by = B.y + (dy>0 ? 0 : B.h);
+  }
+  const ddx = bx - ax, ddy = by - ay;
+  const len = Math.hypot(ddx, ddy);
+  const c = Math.max(40, Math.min(180, len * 0.4));
+  const horiz2 = Math.abs(ddx) > Math.abs(ddy);
+  let c1x, c1y, c2x, c2y;
+  if (horiz2) {
+    c1x = ax + Math.sign(ddx)*c; c1y = ay;
+    c2x = bx - Math.sign(ddx)*c; c2y = by;
+  } else {
+    c1x = ax; c1y = ay + Math.sign(ddy)*c;
+    c2x = bx; c2y = by - Math.sign(ddy)*c;
+  }
+  w.ax=ax; w.ay=ay; w.bx=bx; w.by=by;
+  w.c1x=c1x; w.c1y=c1y; w.c2x=c2x; w.c2y=c2y;
+  // approx length for particle speed (cheap polyline sample)
+  let plen = 0, px=ax, py=ay;
+  for (let i=1;i<=8;i++) {
+    const t = i/8;
+    const mt = 1-t;
+    const x = mt*mt*mt*ax + 3*mt*mt*t*c1x + 3*mt*t*t*c2x + t*t*t*bx;
+    const y = mt*mt*mt*ay + 3*mt*mt*t*c1y + 3*mt*t*t*c2y + t*t*t*by;
+    plen += Math.hypot(x-px, y-py);
+    px=x; py=y;
+  }
+  w.len = plen;
+}
+
+function recomputeAllWires() { wires.forEach(recomputeWire); }
+recomputeAllWires();
+
+function bezierPoint(w, t) {
+  const mt = 1 - t;
+  const x = mt*mt*mt*w.ax + 3*mt*mt*t*w.c1x + 3*mt*t*t*w.c2x + t*t*t*w.bx;
+  const y = mt*mt*mt*w.ay + 3*mt*mt*t*w.c1y + 3*mt*t*t*w.c2y + t*t*t*w.by;
+  return { x, y };
+}
+
+/* ===========================================================
+   Canvas setup
+   =========================================================== */
+
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d", { alpha: false });
+let DPR = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+let W = 0, H = 0;
+
+function resize() {
+  DPR = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  cv.style.width = W + "px";
+  cv.style.height = H + "px";
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ===========================================================
+   Camera
+   =========================================================== */
+
+let scale = 0.7, tx = 40, ty = -10;
+let scaleTarget = scale, txTarget = tx, tyTarget = ty;
+
+function fit() {
+  const W2 = 3060, H2 = 1500;
+  const sw = window.innerWidth, sh = window.innerHeight - 60;
+  const s = Math.min(sw/W2, sh/H2) * 0.95;
+  scaleTarget = s;
+  txTarget = (sw - W2*s)/2;
+  tyTarget = 60 + (sh - H2*s)/2;
+}
+fit();
+scale = scaleTarget; tx = txTarget; ty = tyTarget;
+
+/* ===========================================================
+   Interaction state
+   =========================================================== */
+
+let panning = false, panSX=0, panSY=0, panTX=0, panTY=0;
+let draggingNode = null, dragOX=0, dragOY=0, dragSX=0, dragSY=0;
+let hoverNode = null;
+let pinnedNode = null;
+
+let flowOn = true, glowOn = true, gridOn = true;
+
+function screenToWorld(px, py) {
+  return { x: (px - tx) / scale, y: (py - ty) / scale };
+}
+
+function nodeAt(wx, wy) {
+  // iterate in reverse so top-drawn (last) wins
+  for (let i = NODES.length - 1; i >= 0; i--) {
+    const n = NODES[i];
+    if (wx >= n.x && wx <= n.x + n.w && wy >= n.y && wy <= n.y + n.h) return n;
+  }
+  return null;
+}
+
+cv.addEventListener("mousedown", (e) => {
+  const w = screenToWorld(e.clientX, e.clientY);
+  const n = nodeAt(w.x, w.y);
+  if (n) {
+    draggingNode = n;
+    dragOX = n.x; dragOY = n.y;
+    dragSX = e.clientX; dragSY = e.clientY;
+  } else {
+    panning = true;
+    panSX = e.clientX; panSY = e.clientY;
+    panTX = tx; panTY = ty;
+    cv.classList.add("dragging");
+  }
+});
+window.addEventListener("mousemove", (e) => {
+  const w = screenToWorld(e.clientX, e.clientY);
+  if (draggingNode) {
+    draggingNode.x = dragOX + (e.clientX - dragSX) / scale;
+    draggingNode.y = dragOY + (e.clientY - dragSY) / scale;
+    recomputeAllWires();
+    return;
+  }
+  if (panning) {
+    txTarget = panTX + (e.clientX - panSX);
+    tyTarget = panTY + (e.clientY - panSY);
+    tx = txTarget; ty = tyTarget;
+    return;
+  }
+  const n = nodeAt(w.x, w.y);
+  hoverNode = n;
+  cv.classList.toggle("over-node", !!n);
+  updateTooltip(e.clientX, e.clientY);
+});
+window.addEventListener("mouseup", () => {
+  draggingNode = null;
+  panning = false;
+  cv.classList.remove("dragging");
+});
+
+cv.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const mx = e.clientX, my = e.clientY;
+  const wx = (mx - tx) / scale, wy = (my - ty) / scale;
+  const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
+  const ns = Math.max(0.2, Math.min(2.6, scale * factor));
+  scaleTarget = ns;
+  txTarget = mx - wx * ns;
+  tyTarget = my - wy * ns;
+  scale = ns; tx = txTarget; ty = tyTarget;
+}, { passive: false });
+
+// click pins/unpins for tooltip lock
+cv.addEventListener("click", (e) => {
+  const w = screenToWorld(e.clientX, e.clientY);
+  const n = nodeAt(w.x, w.y);
+  pinnedNode = (pinnedNode === n) ? null : n;
+});
+
+document.getElementById("zoom-in").onclick = () => {
+  const factor = 1.18;
+  const mx = W/2, my = H/2;
+  const wx = (mx - tx) / scale, wy = (my - ty) / scale;
+  scale = Math.min(2.6, scale * factor);
+  tx = mx - wx * scale; ty = my - wy * scale;
+};
+document.getElementById("zoom-out").onclick = () => {
+  const factor = 1/1.18;
+  const mx = W/2, my = H/2;
+  const wx = (mx - tx) / scale, wy = (my - ty) / scale;
+  scale = Math.max(0.2, scale * factor);
+  tx = mx - wx * scale; ty = my - wy * scale;
+};
+document.getElementById("zoom-reset").onclick = () => { scale = 1; tx = 40; ty = 60; };
+document.getElementById("zoom-fit").onclick = () => { fit(); scale = scaleTarget; tx = txTarget; ty = tyTarget; };
+
+function bindToggle(id, getter, setter) {
+  const el = document.getElementById(id);
+  el.classList.toggle("active", getter());
+  el.onclick = () => { setter(!getter()); el.classList.toggle("active", getter()); };
+}
+bindToggle("toggle-flow", () => flowOn, v => flowOn = v);
+bindToggle("toggle-glow", () => glowOn, v => glowOn = v);
+bindToggle("toggle-grid", () => gridOn, v => gridOn = v);
+
+/* ===========================================================
+   Tooltip
+   =========================================================== */
+
+const tooltip = document.getElementById("tooltip");
+
+function updateTooltip(mx, my) {
+  const n = pinnedNode || hoverNode;
+  if (!n) { tooltip.classList.remove("show"); return; }
+  const c = CAT[n.cat];
+  const pills = (n.pills||[]).map(([t,cls]) => `<span class="pill ${cls||''}">${t}</span>`).join("");
+  tooltip.innerHTML = `
+    <div class="tt-name"><span style="color:${c.color}">${n.icon||"●"}</span> ${n.name} <span class="tt-kind" style="margin-left:auto">${n.kind||""}</span></div>
+    <div class="tt-desc">${n.desc||""}</div>
+    ${pills ? `<div class="tt-pills">${pills}</div>` : ""}
+  `;
+  tooltip.classList.add("show");
+  const pad = 14;
+  let x = mx + pad, y = my + pad;
+  const r = tooltip.getBoundingClientRect();
+  if (x + r.width > W - 8) x = mx - r.width - pad;
+  if (y + r.height > H - 8) y = my - r.height - pad;
+  tooltip.style.left = x + "px";
+  tooltip.style.top  = y + "px";
+}
+
+/* ===========================================================
+   Drawing
+   =========================================================== */
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+
+function wireColor(kind) {
+  if (kind === "crit")  return "#ff6b35";
+  if (kind === "data")  return "#60a5fa";
+  if (kind === "event") return "#a78bfa";
+  return "#3a4258";
+}
+
+function wireDimmed(kind) {
+  if (kind === "crit")  return "rgba(255,107,53,0.12)";
+  if (kind === "data")  return "rgba(96,165,250,0.10)";
+  if (kind === "event") return "rgba(167,139,250,0.10)";
+  return "rgba(58,66,88,0.18)";
+}
+
+function drawGrid() {
+  if (!gridOn) return;
+  const step = 40;
+  const x0 = -tx / scale;
+  const y0 = -ty / scale;
+  const x1 = x0 + W / scale;
+  const y1 = y0 + H / scale;
+  const sx = Math.floor(x0/step)*step;
+  const sy = Math.floor(y0/step)*step;
+
+  ctx.lineWidth = 1 / scale;
+  ctx.strokeStyle = "rgba(255,255,255,0.025)";
+  ctx.beginPath();
+  for (let x = sx; x <= x1; x += step) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+  for (let y = sy; y <= y1; y += step) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+  ctx.stroke();
+
+  // larger grid
+  ctx.strokeStyle = "rgba(255,255,255,0.04)";
+  ctx.beginPath();
+  const step2 = 200;
+  const sx2 = Math.floor(x0/step2)*step2;
+  const sy2 = Math.floor(y0/step2)*step2;
+  for (let x = sx2; x <= x1; x += step2) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+  for (let y = sy2; y <= y1; y += step2) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+  ctx.stroke();
+}
+
+function drawGroups() {
+  ctx.save();
+  ctx.lineWidth = 1.2 / scale;
+  GROUPS.forEach(g => {
+    ctx.fillStyle = "rgba(20,24,34,0.45)";
+    roundRect(ctx, g.x, g.y, g.w, g.h, 16);
+    ctx.fill();
+    ctx.setLineDash([6/scale, 6/scale]);
+    ctx.strokeStyle = "#283044";
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // label
+    ctx.fillStyle = "#0a0c11";
+    const label = g.label.toUpperCase();
+    ctx.font = `${11/Math.max(0.6,scale)}px ui-monospace,Menlo,monospace`;
+    const tw = ctx.measureText(label).width;
+    ctx.fillRect(g.x + 12, g.y - 7, tw + 16, 14);
+    ctx.fillStyle = "#8a93a6";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, g.x + 20, g.y);
+  });
+  ctx.restore();
+}
+
+function drawWires(highlightSet) {
+  // Pass 1: dim wires (non-highlighted)
+  // Pass 2: highlighted wires
+  // Glow pass uses shadowBlur
+
+  ctx.lineCap = "round";
+
+  // Pass 0: dim wires
+  for (const w of wires) {
+    const isHi = !highlightSet || (highlightSet.has(w.a) && highlightSet.has(w.b));
+    if (isHi) continue;
+    ctx.beginPath();
+    ctx.moveTo(w.ax, w.ay);
+    ctx.bezierCurveTo(w.c1x, w.c1y, w.c2x, w.c2y, w.bx, w.by);
+    ctx.strokeStyle = wireDimmed(w.kind);
+    ctx.lineWidth = (w.kind === "crit" ? 1.6 : 1.2);
+    ctx.stroke();
+  }
+
+  // Pass 1: highlighted wires — fake glow via wide low-alpha underlay (no shadowBlur)
+  if (glowOn) {
+    ctx.globalCompositeOperation = "lighter";
+    for (const w of wires) {
+      const isHi = !highlightSet || (highlightSet.has(w.a) && highlightSet.has(w.b));
+      if (!isHi) continue;
+      ctx.beginPath();
+      ctx.moveTo(w.ax, w.ay);
+      ctx.bezierCurveTo(w.c1x, w.c1y, w.c2x, w.c2y, w.bx, w.by);
+      ctx.strokeStyle = wireColor(w.kind);
+      ctx.globalAlpha = w.kind === "crit" ? 0.18 : 0.10;
+      ctx.lineWidth = w.kind === "crit" ? 10 : 7;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  // Pass 2: highlighted wires — crisp stroke on top
+  for (const w of wires) {
+    const isHi = !highlightSet || (highlightSet.has(w.a) && highlightSet.has(w.b));
+    if (!isHi) continue;
+    ctx.beginPath();
+    ctx.moveTo(w.ax, w.ay);
+    ctx.bezierCurveTo(w.c1x, w.c1y, w.c2x, w.c2y, w.bx, w.by);
+    ctx.strokeStyle = wireColor(w.kind);
+    ctx.lineWidth = (w.kind === "crit" ? 2.2 : 1.6);
+    if (w.kind === "data") ctx.setLineDash([6, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Arrowheads (only on highlighted)
+  for (const w of wires) {
+    const isHi = !highlightSet || (highlightSet.has(w.a) && highlightSet.has(w.b));
+    if (!isHi) continue;
+    const t1 = bezierPoint(w, 0.985);
+    const t0 = bezierPoint(w, 0.94);
+    const ang = Math.atan2(t1.y - t0.y, t1.x - t0.x);
+    const sz = w.kind === "crit" ? 9 : 7;
+    ctx.fillStyle = wireColor(w.kind);
+    ctx.beginPath();
+    ctx.moveTo(t1.x, t1.y);
+    ctx.lineTo(t1.x - sz*Math.cos(ang) + sz*0.55*Math.sin(ang),
+               t1.y - sz*Math.sin(ang) - sz*0.55*Math.cos(ang));
+    ctx.lineTo(t1.x - sz*Math.cos(ang) - sz*0.55*Math.sin(ang),
+               t1.y - sz*Math.sin(ang) + sz*0.55*Math.cos(ang));
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawWireLabels(highlightSet) {
+  ctx.font = `10px ui-monospace,Menlo,monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const w of wires) {
+    if (!w.label) continue;
+    const isHi = !highlightSet || (highlightSet.has(w.a) && highlightSet.has(w.b));
+    if (!isHi && scale < 0.9) continue;
+    const p = bezierPoint(w, 0.5);
+    const text = w.label;
+    const tw = ctx.measureText(text).width;
+    ctx.fillStyle = isHi ? "rgba(10,12,17,0.92)" : "rgba(10,12,17,0.7)";
+    roundRect(ctx, p.x - tw/2 - 5, p.y - 8, tw + 10, 14, 4);
+    ctx.fill();
+    ctx.fillStyle = isHi ? "#cdd3e0" : "#5b6479";
+    ctx.fillText(text, p.x, p.y);
+  }
+}
+
+function drawParticles(time, highlightSet) {
+  if (!flowOn) return;
+  for (const w of wires) {
+    const isHi = !highlightSet || (highlightSet.has(w.a) && highlightSet.has(w.b));
+    if (!isHi) continue;
+    const speed = w.kind === "crit" ? 0.18 : w.kind === "data" ? 0.11 : w.kind === "event" ? 0.14 : 0.10;
+    // multiple particles spaced along the curve
+    const count = w.kind === "crit" ? 2 : 1;
+    for (let i = 0; i < count; i++) {
+      const t = (((time * speed) + (w.ax * 0.0007) + (w.ay * 0.0009) + i * 0.5) % 1);
+      const p = bezierPoint(w, t);
+      const color = wireColor(w.kind);
+      // trail (small smear)
+      const tt = Math.max(0, t - 0.02);
+      const p2 = bezierPoint(w, tt);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // fake glow: layered low-alpha discs (cheap)
+      if (glowOn) {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.28;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 0.45;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = "source-over";
+      }
+
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, w.kind === "crit" ? 3 : 2.4, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawNodes(highlightSet) {
+  ctx.textBaseline = "middle";
+  for (const n of NODES) {
+    const dim = highlightSet && !highlightSet.has(n.id);
+    const c = CAT[n.cat];
+    const isHover = (hoverNode === n) || (pinnedNode === n);
+
+    ctx.globalAlpha = dim ? 0.28 : 1;
+
+    // body
+    const grd = ctx.createLinearGradient(n.x, n.y, n.x, n.y + n.h);
+    grd.addColorStop(0, "#1a1f2b");
+    grd.addColorStop(1, "#11141c");
+    ctx.fillStyle = grd;
+    roundRect(ctx, n.x, n.y, n.w, n.h, NODE_R);
+    ctx.fill();
+
+    // border
+    ctx.lineWidth = isHover ? 1.6 : 1;
+    ctx.strokeStyle = isHover ? c.color : "#2a3142";
+    roundRect(ctx, n.x, n.y, n.w, n.h, NODE_R);
+    ctx.stroke();
+
+    // category strip (left)
+    ctx.fillStyle = c.color;
+    roundRect(ctx, n.x, n.y, 4, n.h, NODE_R);
+    ctx.fill();
+
+    // glow on hover (fake — layered low-alpha outlines)
+    if (isHover && glowOn) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = c.color;
+      for (let g = 0; g < 3; g++) {
+        ctx.globalAlpha = 0.18 - g * 0.05;
+        ctx.lineWidth = 3 + g * 4;
+        roundRect(ctx, n.x + 0.5, n.y + 0.5, n.w - 1, n.h - 1, NODE_R);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // icon chip
+    const ix = n.x + 14, iy = n.y + 12;
+    ctx.fillStyle = c.fill;
+    roundRect(ctx, ix, iy, 26, 26, 6);
+    ctx.fill();
+    ctx.strokeStyle = c.color;
+    ctx.lineWidth = 1;
+    roundRect(ctx, ix + 0.5, iy + 0.5, 25, 25, 6);
+    ctx.stroke();
+
+    ctx.font = "16px system-ui, 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(n.icon || "●", ix + 13, iy + 14);
+
+    // name
+    ctx.font = "600 13px Inter, system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#e6e9ef";
+    ctx.fillText(truncate(ctx, n.name, n.w - 60), n.x + 48, n.y + 22);
+
+    // kind tag
+    if (n.kind) {
+      ctx.font = "10px ui-monospace, Menlo, monospace";
+      ctx.fillStyle = "#5b6479";
+      ctx.textAlign = "right";
+      ctx.fillText(n.kind.toUpperCase(), n.x + n.w - 12, n.y + 22);
+    }
+
+    // desc (2 lines max)
+    ctx.font = "11px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#8a93a6";
+    ctx.textAlign = "left";
+    wrapText(ctx, n.desc || "", n.x + 14, n.y + 50, n.w - 28, 14, 2);
+
+    // pills row
+    if (n.pills && n.pills.length) {
+      let px = n.x + 14;
+      const py = n.y + n.h - 18;
+      ctx.font = "10px Inter, system-ui, sans-serif";
+      for (const [t, cls] of n.pills) {
+        const tw = ctx.measureText(t).width;
+        const pw = tw + 12;
+        const pcol = pillColor(cls);
+        ctx.fillStyle = "rgba(14,17,26,0.9)";
+        roundRect(ctx, px, py, pw, 14, 7);
+        ctx.fill();
+        ctx.strokeStyle = pcol.border;
+        ctx.lineWidth = 1;
+        roundRect(ctx, px + 0.5, py + 0.5, pw - 1, 13, 7);
+        ctx.stroke();
+        ctx.fillStyle = pcol.text;
+        ctx.textAlign = "center";
+        ctx.fillText(t, px + pw/2, py + 7);
+        px += pw + 4;
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function pillColor(cls) {
+  switch (cls) {
+    case "ok":     return { text: "#4ade80", border: "rgba(74,222,128,0.4)" };
+    case "warn":   return { text: "#fbbf24", border: "rgba(251,191,36,0.4)" };
+    case "bad":    return { text: "#f87171", border: "rgba(248,113,113,0.4)" };
+    case "info":   return { text: "#60a5fa", border: "rgba(96,165,250,0.4)" };
+    case "purple": return { text: "#a78bfa", border: "rgba(167,139,250,0.4)" };
+    default:       return { text: "#8a93a6", border: "#2a3142" };
+  }
+}
+
+function truncate(ctx, str, maxW) {
+  if (ctx.measureText(str).width <= maxW) return str;
+  let s = str;
+  while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1);
+  return s + "…";
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH, maxLines) {
+  const words = text.split(/\s+/);
+  let line = "";
+  let lines = 0;
+  for (let i = 0; i < words.length; i++) {
+    const test = line ? line + " " + words[i] : words[i];
+    if (ctx.measureText(test).width > maxW && line) {
+      if (lines + 1 >= maxLines) {
+        // truncate this final line
+        ctx.fillText(truncate(ctx, line + " " + words.slice(i).join(" "), maxW), x, y + lines*lineH);
+        return;
+      }
+      ctx.fillText(line, x, y + lines*lineH);
+      line = words[i];
+      lines++;
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, x, y + lines*lineH);
+}
+
+/* ===========================================================
+   Frame loop
+   =========================================================== */
+
+const statsEl = document.getElementById("stats");
+let lastFps = 0, frames = 0, fpsT = performance.now();
+
+function frame(now) {
+  ctx.save();
+  ctx.scale(DPR, DPR);
+
+  // bg
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#0c0e15");
+  bg.addColorStop(1, "#080a10");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // soft radial accents
+  const r1 = ctx.createRadialGradient(W*0.2, 0, 0, W*0.2, 0, W*0.8);
+  r1.addColorStop(0, "rgba(255,107,53,0.07)");
+  r1.addColorStop(1, "rgba(255,107,53,0)");
+  ctx.fillStyle = r1; ctx.fillRect(0,0,W,H);
+
+  const r2 = ctx.createRadialGradient(W*0.9, H, 0, W*0.9, H, W*0.7);
+  r2.addColorStop(0, "rgba(96,165,250,0.06)");
+  r2.addColorStop(1, "rgba(96,165,250,0)");
+  ctx.fillStyle = r2; ctx.fillRect(0,0,W,H);
+
+  // world transform
+  ctx.translate(tx, ty);
+  ctx.scale(scale, scale);
+
+  drawGrid();
+  drawGroups();
+
+  const focus = pinnedNode || hoverNode;
+  let highlight = null;
+  if (focus) {
+    highlight = new Set([focus.id]);
+    const adj = adjacency.get(focus.id);
+    if (adj) adj.forEach(id => highlight.add(id));
+  }
+
+  drawWires(highlight);
+  drawParticles(now / 1000, highlight);
+  drawWireLabels(highlight);
+  drawNodes(highlight);
+
+  ctx.restore();
+
+  // fps
+  frames++;
+  if (now - fpsT > 500) {
+    lastFps = Math.round((frames * 1000) / (now - fpsT));
+    frames = 0; fpsT = now;
+    statsEl.innerHTML = `<b>${lastFps}</b> fps · <b>${NODES.length}</b> nodes · <b>${wires.length}</b> edges · zoom <b>${scale.toFixed(2)}×</b>`;
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
