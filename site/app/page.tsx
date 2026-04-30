@@ -1,4 +1,9 @@
 import { Hero } from "@/components/Hero";
+import { ElonOverview } from "@/components/ElonOverview";
+import { TrendIntelligence } from "@/components/TrendIntelligence";
+import { DataContentEngine } from "@/components/DataContentEngine";
+import { MemoryFeedbackLoop } from "@/components/MemoryFeedbackLoop";
+import { AnalyticsInsight } from "@/components/AnalyticsInsight";
 import { Steps } from "@/components/Steps";
 import { Features } from "@/components/Features";
 import { Demo } from "@/components/Demo";
@@ -11,6 +16,11 @@ export default function Page() {
   return (
     <>
       <Hero />
+      <ElonOverview />
+      <TrendIntelligence />
+      <DataContentEngine />
+      <MemoryFeedbackLoop />
+      <AnalyticsInsight />
       <Stats />
       <Steps />
       <Features />
