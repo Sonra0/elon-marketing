@@ -138,4 +138,4 @@ FastAPI · Celery · Redis · Postgres · MinIO · Alembic · Next.js 14 · Tail
 
 ---
 
-Built at ConHacks 2026.
+Built at ConHacks 2026 🚀
