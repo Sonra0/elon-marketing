@@ -17,7 +17,9 @@ Built for **ConHacks 2026**. Powered by Claude (Sonnet for execution, Opus for p
 
 ## Architecture
 
-Open `architecture-graph.html` in a browser for the interactive system map. High level:
+![Elon system flow](assets/architecture.png)
+
+Open `architecture-graph.html` in a browser for the interactive version. High level:
 
 ```
 src/elon/
